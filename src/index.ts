@@ -15,7 +15,7 @@ app.use("*", cors());
 
 const limiter = rateLimiter({
   windowMs: 60 * 60 * 1000,
-  limit: 25,
+  limit: 100,
   standardHeaders: "draft-7",
   keyGenerator: (c) => getConnInfo(c)?.remote?.address!,
 });
