@@ -59,7 +59,9 @@ export class OpenRouterAIService implements AIService {
               generate a concise and descriptive PR title and a markdown-formatted PR description 
               that summarizes the changes. Focus on the main features or fixes.
               
-              Return the response in JSON format with "title" and "description" fields.`,
+              Return the response in JSON format with "title" and "description" fields.
+              also add emojis to the title and description as needed and relevant.
+              `,
             },
           ],
           temperature: 0.7,
