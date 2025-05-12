@@ -6,8 +6,6 @@ import {env} from "./config/env.config";
 import {cors} from "hono/cors";
 import {prRoutes} from "./routes/pr.routes";
 import {rateLimiter} from "hono-rate-limiter";
-import fs from "node:fs/promises";
-import path from "node:path";
 import {trackRequests} from "./middlewares/logger.middleware";
 import mongoose from "mongoose";
 const app = new Hono();
