@@ -6,12 +6,22 @@ import {env} from "./config/env.config";
 import {cors} from "hono/cors";
 import {prRoutes} from "./routes/pr.routes";
 import {rateLimiter} from "hono-rate-limiter";
+import fs from "node:fs/promises";
+import path from "node:path";
+import {trackRequests} from "./middlewares/logger.middleware";
+import mongoose from "mongoose";
 const app = new Hono();
 
 // Global middlewares
 app.use("*", logger());
 app.use("*", poweredBy());
 app.use("*", cors());
+app.use("*", trackRequests);
+
+mongoose
+  .connect(env.MONGO_URI)
+  .then(() => console.log("🟢 MongoDB connected"))
+  .catch((err) => console.error("🔴 MongoDB connection error:", err));
 
 const limiter = rateLimiter({
   windowMs: 60 * 60 * 1000,
