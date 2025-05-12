@@ -7,4 +7,5 @@ export const env = {
   CLAUDE_API_URL:
     Bun.env.CLAUDE_API_URL || "https://api.anthropic.com/v1/messages",
   MICROSOFT_API_KEY: Bun.env.MICROSOFT_API_KEY || "",
+  MONGO_URI: Bun.env.MONGO_URI || "",
 };
