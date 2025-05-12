@@ -5,7 +5,12 @@ import {Context, Next} from "hono";
 export const trackRequests = async (c: Context, next: Next) => {
   const requestStartTime = Date.now();
   const requestId = crypto.randomUUID();
-  const ipAddress = getConnInfo(c)?.remote?.address || "unknown";
+  const forwardedFor = c.req.header("x-forwarded-for");
+  const realIp =
+    forwardedFor?.split(",")[0]?.trim() ||
+    getConnInfo(c)?.remote?.address ||
+    "unknown";
+  const ipAddress = realIp;
   const method = c.req.method;
   const url = c.req.url;
 

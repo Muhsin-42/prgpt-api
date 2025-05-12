@@ -6,8 +6,6 @@ import {env} from "./config/env.config";
 import {cors} from "hono/cors";
 import {prRoutes} from "./routes/pr.routes";
 import {rateLimiter} from "hono-rate-limiter";
-import fs from "node:fs/promises";
-import path from "node:path";
 import {trackRequests} from "./middlewares/logger.middleware";
 import mongoose from "mongoose";
 const app = new Hono();
@@ -27,11 +25,24 @@ const limiter = rateLimiter({
   windowMs: 60 * 60 * 1000,
   limit: 100,
   standardHeaders: "draft-7",
-  keyGenerator: (c) => getConnInfo(c)?.remote?.address!,
+  keyGenerator: (c) => {
+    const forwardedFor = c.req.header("x-forwarded-for");
+    const realIp =
+      forwardedFor?.split(",")[0]?.trim() ||
+      getConnInfo(c)?.remote?.address ||
+      "unknown";
+    return realIp;
+  },
 });
-
 app.use("*", (c, next) => {
-  console.log(getConnInfo(c)?.remote?.address);
+  // console.log("ttt ", c.req.header("x-forwarded-for"));
+  // console.log(getConnInfo(c)?.remote?.address);
+  const forwardedFor = c.req.header("x-forwarded-for");
+  const realIp =
+    forwardedFor?.split(",")[0]?.trim() ||
+    getConnInfo(c)?.remote?.address ||
+    "unknown";
+  console.log("realIp", realIp);
   return next();
 });
 app.use("*", limiter);
