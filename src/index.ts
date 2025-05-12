@@ -6,12 +6,16 @@ import {env} from "./config/env.config";
 import {cors} from "hono/cors";
 import {prRoutes} from "./routes/pr.routes";
 import {rateLimiter} from "hono-rate-limiter";
+import fs from "node:fs/promises";
+import path from "node:path";
+import {trackRequests} from "./middlewares/logger.middleware";
 const app = new Hono();
 
 // Global middlewares
 app.use("*", logger());
 app.use("*", poweredBy());
 app.use("*", cors());
+app.use("*", trackRequests);
 
 const limiter = rateLimiter({
   windowMs: 60 * 60 * 1000,
