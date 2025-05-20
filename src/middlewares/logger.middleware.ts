@@ -13,6 +13,7 @@ export const trackRequests = async (c: Context, next: Next) => {
   const ipAddress = realIp;
   const method = c.req.method;
   const url = c.req.url;
+  const {currentUrl} = await c.req.json();
 
   let requestBody = null;
   try {
@@ -43,6 +44,7 @@ export const trackRequests = async (c: Context, next: Next) => {
     ipAddress,
     method,
     url,
+    currentUrl,
     requestBody,
     responseStatus,
     responseBody,

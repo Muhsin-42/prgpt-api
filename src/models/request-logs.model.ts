@@ -6,6 +6,7 @@ const requestLogSchema = new mongoose.Schema({
   ipAddress: String,
   method: String,
   url: String,
+  currentUrl: String,
   requestBody: mongoose.Schema.Types.Mixed,
   responseStatus: Number,
   responseBody: mongoose.Schema.Types.Mixed,
