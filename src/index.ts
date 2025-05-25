@@ -35,8 +35,6 @@ const limiter = rateLimiter({
   },
 });
 app.use("*", (c, next) => {
-  // console.log("ttt ", c.req.header("x-forwarded-for"));
-  // console.log(getConnInfo(c)?.remote?.address);
   const forwardedFor = c.req.header("x-forwarded-for");
   const realIp =
     forwardedFor?.split(",")[0]?.trim() ||
