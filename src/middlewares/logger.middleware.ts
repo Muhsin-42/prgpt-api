@@ -78,12 +78,14 @@ export const trackRequests = async (c: Context, next: Next) => {
 
   let currentUrl = null;
   let requestBody = null;
+  let username = null;
 
   try {
     if (["POST", "PUT", "PATCH"].includes(method)) {
       const body = await c.req.json().catch(() => null);
       requestBody = body;
       currentUrl = body?.currentUrl ?? null;
+      username = body?.username ?? null;
     }
   } catch (error) {
     console.error("Error reading request body:", error);
@@ -110,6 +112,7 @@ export const trackRequests = async (c: Context, next: Next) => {
     method,
     url,
     currentUrl,
+    username,
     requestBody,
     responseStatus,
     responseBody,

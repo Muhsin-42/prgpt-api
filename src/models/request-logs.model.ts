@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 
 const requestLogSchema = new mongoose.Schema({
+  username: String,
   requestId: String,
   timestamp: Date,
   ipAddress: String,
