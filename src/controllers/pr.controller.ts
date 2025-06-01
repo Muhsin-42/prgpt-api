@@ -1,5 +1,6 @@
 import {Context} from "hono";
 import {AIServiceFactory, AIServiceType} from "../services/ai";
+import {RequestLog} from "../models/request-logs.model";
 
 const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY || "";
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
@@ -70,5 +71,75 @@ export const generateTitleDescription = async (c: Context) => {
       },
       500
     );
+  }
+};
+
+interface Stats {
+  totalPrGenerated: number;
+  totalUniqueUsers: number;
+  totalUniqueIps: number;
+  totalUniqueRepositories: number;
+  uniqueUsersList: string[];
+  uniqueIpsList: string[];
+  uniqueRepositoriesList: string[];
+}
+
+export const getStats = async (c: Context) => {
+  try {
+    // stats include
+    // 1. total pr generated. (check if the responseBody exist if it exist count as one)
+    // 2. total unique users by username, a. give total count b. give list of users
+    // 3. total unique ips
+    // 4. total unique repositories a. give total count b. give list of repositories (currentUrl)
+
+    const stats: Stats = {
+      totalPrGenerated: 0,
+      totalUniqueUsers: 0,
+      totalUniqueIps: 0,
+      totalUniqueRepositories: 0,
+      uniqueUsersList: [],
+      uniqueIpsList: [],
+      uniqueRepositoriesList: [],
+    };
+
+    const totalPrGenerated = await RequestLog.countDocuments({
+      responseBody: {$exists: true},
+    });
+    stats.totalPrGenerated = totalPrGenerated;
+
+    const totalUniqueUsers = await RequestLog.countDocuments({
+      username: {$exists: true},
+    });
+    stats.totalUniqueUsers = totalUniqueUsers;
+
+    const totalUniqueIps = await RequestLog.countDocuments({
+      ipAddress: {$exists: true},
+    });
+    stats.totalUniqueIps = totalUniqueIps;
+
+    const uniqueUsersList = await RequestLog.distinct("username");
+    stats.uniqueUsersList = uniqueUsersList.filter((user) => user !== null);
+
+    const uniqueIpsList = await RequestLog.distinct("ipAddress");
+    stats.uniqueIpsList = uniqueIpsList.filter((ip) => ip !== null);
+
+    const uniqueUrls = await RequestLog.distinct("currentUrl");
+
+    const repoNames = new Set();
+
+    for (const url of uniqueUrls) {
+      const match = url?.match(/github\.com\/[^\/]+\/([^\/]+)/);
+      if (match && match[1]) {
+        repoNames.add(match[1]);
+      }
+    }
+
+    const uniqueRepoNames = Array.from(repoNames) as string[];
+    stats.uniqueRepositoriesList = uniqueRepoNames;
+    stats.totalUniqueRepositories = uniqueRepoNames.length;
+    return c.json(stats, 200);
+  } catch (error) {
+    console.error("Error getting stats:", error);
+    return c.json({message: "Failed to get stats"}, 500);
   }
 };

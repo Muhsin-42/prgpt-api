@@ -48,7 +48,7 @@ app.use("*", limiter);
 // Health Check
 app.get("/", (c) => c.text("✅ PrGPT API is live"));
 app.get("/health", (c) => c.text("🏥 PrGPT API is live and kicking!"));
-app.route("api/pr/generate-title-description", prRoutes);
+app.route("api/pr", prRoutes);
 // Catch-all 404
 app.notFound((c) =>
   c.json(
