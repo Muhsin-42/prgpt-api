@@ -17,8 +17,15 @@ export class MistralAIService implements AIService {
   }
 
   async generateTitleDescription(
-    commits: string[]
+    commits: string[],
+    repoUrl: string
   ): Promise<AIServiceResponse> {
+    console.log("repoUrl", repoUrl);
+    const baseBranch = repoUrl.split("...")[0].split("/").pop();
+    const headBranch = repoUrl.split("...")[1].split("/").pop();
+    const repo = repoUrl.split("...")[0].split("/").pop();
+    console.log({repo, baseBranch, headBranch});
+
     try {
       const response = await axios.post(
         this.apiUrl,
@@ -27,22 +34,38 @@ export class MistralAIService implements AIService {
           messages: [
             {
               role: "system",
-              content:
-                "You are a helpful assistant that generates concise and descriptive PR titles and descriptions based on git commit messages.",
+              content: `You are a senior software engineer creating professional pull request descriptions. 
+              Always respond with ONLY a JSON object in this exact format:
+              {
+                "title": "Conventional Commits-style title (max 72 chars)",
+                "description": "## Description\\nConcise overview of changes\\n\\n## Changes\\n- Bullet points of specific changes\\n- Reference issues/tickets when possible\\n- Group related changes\\n\\n## Impact\\nWhat areas/components are affected\\n\\n## Notes\\nAny additional context"
+              }
+              
+              Guidelines:
+              1. Title: Use Conventional Commits format (feat, fix, chore, docs, style, refactor, perf, test)
+              2. Description: Be specific about technical changes
+              3. Mention specific files/modules when relevant
+              4. Keep language professional and concise`,
             },
             {
               role: "user",
-              content: `Given these git commit messages: ${JSON.stringify(
-                commits
-              )}, 
-              generate a concise and descriptive PR title and a markdown-formatted PR description 
-              that summarizes the changes. Focus on the main features or fixes.
-              
-              Return the response in JSON format with "title" and "description" fields.`,
+              content: `Generate a professional PR for these commits:\n\n${commits.join(
+                "\n"
+              )}\n\nAdditional context:
+              - Repository: ${repo}
+              - Base Branch: ${baseBranch}
+              - Head Branch: ${headBranch}
+
+              Please analyze the commit messages and:
+              1. Categorize the changes (feature, bugfix, etc.)
+              2. Identify technical specifics
+              3. Note any breaking changes
+              4. Group related changes logically`,
             },
           ],
-          temperature: 0.7,
-          max_tokens: 1000,
+          temperature: 0.3, // Lower for more focused results
+          response_format: {type: "json_object"},
+          max_tokens: 1200,
         },
         {
           headers: {
@@ -51,39 +74,49 @@ export class MistralAIService implements AIService {
           },
         }
       );
-
-      // Extract response from Mistral
       const content = response.data.choices[0].message.content;
-      console.log(
-        "🚀 ~ file: mistral.service.ts:generateTitleDescription ~ content:",
-        content
-      );
 
-      // Try to parse the JSON response
-      try {
-        // This handles if Mistral returns a properly formatted JSON
-        const parsedResponse = JSON.parse(content);
-        return {
-          title: parsedResponse.title,
-          description: parsedResponse.description,
-        };
-      } catch (error) {
-        // If Mistral doesn't return valid JSON, try to extract title and description manually
-        const titleMatch = content.match(/title["\s:]+([^\n"]+)/i);
-        const descriptionMatch = content.match(
-          /description["\s:]+([\s\S]+?)(?=\n\n|$)/i
-        );
+      // Robust parsing with multiple fallbacks
+      const parseResponse = (content: string): AIServiceResponse => {
+        // Try direct JSON parse first
+        try {
+          const parsed = JSON.parse(content);
+          if (parsed.title && parsed.description) {
+            return parsed;
+          }
+        } catch {}
 
+        // Try extracting from potential code block
+        const jsonMatch = content.match(/(\{[\s\S]*\})/);
+        if (jsonMatch) {
+          try {
+            const parsed = JSON.parse(jsonMatch[1]);
+            if (parsed.title && parsed.description) {
+              return parsed;
+            }
+          } catch {}
+        }
+
+        // Final fallback - extract title and description by pattern
         return {
-          title: titleMatch ? titleMatch[1].trim() : "Feature Update",
-          description: descriptionMatch ? descriptionMatch[1].trim() : content,
+          title:
+            content.split("\n")[0]?.replace(/^["']|["']$/g, "") ||
+            "Feature Update",
+          description: content.includes("\n")
+            ? content.split("\n").slice(1).join("\n").trim()
+            : content,
         };
-      }
+      };
+
+      return parseResponse(content);
     } catch (error) {
       console.error("Error calling Mistral API:", error);
-      throw new Error(
-        `Failed to generate title and description: ${(error as Error).message}`
-      );
+      return {
+        title: "Feature Update",
+        description: `This PR includes:\n${commits
+          .map((c) => `- ${c}`)
+          .join("\n")}`,
+      };
     }
   }
 }
