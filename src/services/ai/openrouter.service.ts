@@ -1,7 +1,6 @@
 // services/ai/openrouter.service.ts
 import {AIService, AIServiceResponse} from "./ai.interface";
 import axios from "axios";
-
 export class OpenRouterAIService implements AIService {
   private apiKey: string;
   private apiUrl: string;
@@ -11,7 +10,7 @@ export class OpenRouterAIService implements AIService {
 
   constructor(
     apiKey: string,
-    model: string = "microsoft/mai-ds-r1:free",
+    model: string = "deepseek/deepseek-r1-0528-qwen3-8b:free",
     apiUrl: string = "https://openrouter.ai/api/v1/chat/completions",
     siteUrl: string = "",
     siteName: string = ""
@@ -80,7 +79,7 @@ export class OpenRouterAIService implements AIService {
           title: parsedResponse.title,
           description: parsedResponse.description,
         };
-      } catch (error) {
+      } catch (error: any) {
         // If the model doesn't return valid JSON, try to extract title and description manually
         const titleMatch = content.match(/title["\s:]+([^\n"]+)/i);
         const descriptionMatch = content.match(
@@ -92,10 +91,12 @@ export class OpenRouterAIService implements AIService {
           description: descriptionMatch ? descriptionMatch[1].trim() : content,
         };
       }
-    } catch (error) {
-      console.error("Error calling OpenRouter API:", error);
+    } catch (error: any) {
+      console.error("Error calling OpenRouter API:", error.response?.data);
       throw new Error(
-        `Failed to generate title and description: ${(error as Error).message}`
+        `Failed to generate title and description: ${JSON.stringify(
+          error.response?.data
+        )}`
       );
     }
   }
