@@ -10,9 +10,10 @@ const MICROSOFT_API_KEY = process.env.MICROSOFT_API_KEY || "";
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "";
 const SITE_URL = process.env.SITE_URL || "";
 const SITE_NAME = process.env.SITE_NAME || "";
+const MISTRAL_API_KEY = process.env.MISTRAL_API_KEY || "";
+const MISTRAL_MODEL = process.env.MISTRAL_MODEL || "mistral-small-latest";
 
-const AI_SERVICE_TYPE =
-  (process.env.AI_SERVICE_TYPE as AIServiceType) || AIServiceType.OPENROUTER;
+const AI_SERVICE_TYPE = AIServiceType.MISTRAL as AIServiceType;
 
 let aiService;
 
@@ -36,6 +37,14 @@ switch (AI_SERVICE_TYPE) {
     aiService = AIServiceFactory.createService(AIServiceType.OPENROUTER, {
       apiKey: OPENROUTER_API_KEY,
       model: process.env.OPENROUTER_MODEL || "microsoft/mai-ds-r1:free",
+      siteUrl: SITE_URL,
+      siteName: SITE_NAME,
+    });
+    break;
+  case AIServiceType.MISTRAL:
+    aiService = AIServiceFactory.createService(AIServiceType.MISTRAL, {
+      apiKey: MISTRAL_API_KEY,
+      model: MISTRAL_MODEL,
       siteUrl: SITE_URL,
       siteName: SITE_NAME,
     });
