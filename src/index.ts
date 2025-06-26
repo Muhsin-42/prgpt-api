@@ -22,8 +22,8 @@ mongoose
   .catch((err) => console.error("🔴 MongoDB connection error:", err));
 
 const limiter = rateLimiter({
-  windowMs: 60 * 60 * 1000,
-  limit: 100,
+  windowMs: 20 * 60 * 1000, // 20 minutes in milliseconds
+  limit: 30,
   standardHeaders: "draft-7",
   keyGenerator: (c) => {
     const forwardedFor = c.req.header("x-forwarded-for");
