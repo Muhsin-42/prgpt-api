@@ -4,5 +4,8 @@ export interface AIServiceResponse {
 }
 
 export interface AIService {
-  generateTitleDescription(commits: string[]): Promise<AIServiceResponse>;
+  generateTitleDescription(
+    commits: string[],
+    repoUrl: string
+  ): Promise<AIServiceResponse>;
 }
