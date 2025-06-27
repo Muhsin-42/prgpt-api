@@ -6,6 +6,7 @@ export interface AIServiceResponse {
 export interface AIService {
   generateTitleDescription(
     commits: string[],
+    changedFiles: string[],
     repoUrl: string
   ): Promise<AIServiceResponse>;
 }

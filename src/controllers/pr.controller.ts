@@ -56,13 +56,17 @@ switch (AI_SERVICE_TYPE) {
 }
 export const generateTitleDescription = async (c: Context) => {
   try {
-    const {commits, currentUrl: repoUrl} = await c.req.json();
+    const {commits, currentUrl: repoUrl, changedFiles} = await c.req.json();
 
     if (!commits || !Array.isArray(commits) || commits.length === 0) {
       return c.json({message: "No valid commits found"}, 400);
     }
 
-    const result = await aiService.generateTitleDescription(commits, repoUrl);
+    const result = await aiService.generateTitleDescription(
+      commits,
+      changedFiles,
+      repoUrl
+    );
 
     return c.json(
       {
