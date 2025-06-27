@@ -203,6 +203,7 @@ export class MistralAIService implements AIService {
 
   async generateTitleDescription(
     commits: string[],
+    changedFiles: string[],
     repoUrl: string
   ): Promise<AIServiceResponse> {
     // Set default response for fallback
@@ -212,46 +213,45 @@ export class MistralAIService implements AIService {
     };
 
     try {
-      // Extract branch info (non-blocking)
-      const [baseBranch, headBranch] = repoUrl
-        .split("...")
-        .map((part) => part.split("/").pop() || "");
-
       // Set timeout for 25 seconds max
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 25000);
+
+      const messages = [
+        {
+          role: "system",
+          content: `You are a PR assistant. Respond with JSON in this format:
+          {
+            "title": "Conventional Commits-style title",
+            "description": "## Summary\\nBrief overview\\n\\n## Changes\\n- Main changes\\n- Key files affected\\n\\n## Impact\\nWhat's affected"
+          }
+          Keep description concise but meaningful (3-5 bullet points).`,
+        },
+        {
+          role: "user",
+          content: `Create PR with these commits:
+          ${commits.slice(0, 15).join("\n")}
+          ${
+            commits.length > 15
+              ? `\n(+ ${commits.length - 15} more commits)`
+              : ""
+          }
+          
+          Affected files: ${changedFiles?.slice(0, 15).join(", ")}              
+          
+          Focus on:
+          1. Main purpose of changes
+          2. Key technical modifications
+          3. Notable files affected
+          `,
+        },
+      ];
 
       const response = await axios.post(
         this.apiUrl,
         {
           model: this.model,
-          messages: [
-            {
-              role: "system",
-              content: `You are a PR assistant. Respond with JSON in this format:
-              {
-                "title": "Conventional Commits-style title",
-                "description": "## Summary\\nBrief overview\\n\\n## Changes\\n- Main changes\\n- Key files affected\\n\\n## Impact\\nWhat's affected"
-              }
-              Keep description concise but meaningful (3-5 bullet points).`,
-            },
-            {
-              role: "user",
-              content: `Create PR for ${headBranch}→${baseBranch} with these commits:
-              ${commits.slice(0, 15).join("\n")}
-              ${
-                commits.length > 15
-                  ? `\n(+ ${commits.length - 15} more commits)`
-                  : ""
-              }
-              
-              Focus on:
-              1. Main purpose of changes
-              2. Key technical modifications
-              3. Notable files affected
-              `,
-            },
-          ],
+          messages,
           temperature: 0.4, // Slightly higher for better quality
           response_format: {type: "json_object"},
           max_tokens: 900, // Balanced length
