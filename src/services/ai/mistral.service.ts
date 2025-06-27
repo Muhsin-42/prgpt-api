@@ -120,18 +120,96 @@ export class MistralAIService implements AIService {
   //   }
   // }
 
+  // async generateTitleDescription(
+  //   commits: string[],
+  //   repoUrl: string
+  // ): Promise<AIServiceResponse> {
+  //   // Set default response for quick fallback
+  //   const defaultResponse: AIServiceResponse = {
+  //     title: "Feature Update",
+  //     description: `Changes:\n${commits.map((c) => `- ${c}`).join("\n")}`,
+  //   };
+
+  //   // Early return if no commits
+  //   if (!commits.length) return defaultResponse;
+
+  //   try {
+  //     // Extract branch info (non-blocking)
+  //     const [baseBranch, headBranch] = repoUrl
+  //       .split("...")
+  //       .map((part) => part.split("/").pop() || "");
+
+  //     // Optimized API call with timeout
+  //     const controller = new AbortController();
+  //     const timeout = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
+  //     const response = await axios.post(
+  //       this.apiUrl,
+  //       {
+  //         model: this.model,
+  //         messages: [
+  //           {
+  //             role: "system",
+  //             content: `Respond ONLY with JSON: {"title":"PR title","description":"Markdown description"}`,
+  //           },
+  //           {
+  //             role: "user",
+  //             content: `Create PR for ${headBranch}→${baseBranch}. Commits:\n${commits
+  //               .slice(0, 10)
+  //               .join("\n")}${
+  //               commits.length > 10
+  //                 ? "\n...and " + (commits.length - 10) + " more"
+  //                 : ""
+  //             }`,
+  //           },
+  //         ],
+  //         temperature: 0.3,
+  //         response_format: {type: "json_object"},
+  //         max_tokens: 600, // Reduced from 1200
+  //       },
+  //       {
+  //         headers: {
+  //           Authorization: `Bearer ${this.apiKey}`,
+  //           "Content-Type": "application/json",
+  //         },
+  //         signal: controller.signal,
+  //       }
+  //     );
+
+  //     clearTimeout(timeout);
+
+  //     // Fast path parsing
+  //     try {
+  //       const content = response.data.choices[0]?.message?.content;
+  //       if (typeof content === "string") {
+  //         const result = JSON.parse(content);
+  //         if (result.title && result.description) {
+  //           return {
+  //             title: result.title,
+  //             description: result.description.replace(/\\n/g, "\n"),
+  //           };
+  //         }
+  //       }
+  //     } catch (e) {
+  //       console.warn("Fast parse failed, using default");
+  //     }
+
+  //     return defaultResponse;
+  //   } catch (error: any) {
+  //     console.error("API call failed:", error?.response?.data?.message);
+  //     return defaultResponse;
+  //   }
+  // }
+
   async generateTitleDescription(
     commits: string[],
     repoUrl: string
   ): Promise<AIServiceResponse> {
-    // Set default response for quick fallback
+    // Set default response for fallback
     const defaultResponse: AIServiceResponse = {
       title: "Feature Update",
       description: `Changes:\n${commits.map((c) => `- ${c}`).join("\n")}`,
     };
-
-    // Early return if no commits
-    if (!commits.length) return defaultResponse;
 
     try {
       // Extract branch info (non-blocking)
@@ -139,9 +217,9 @@ export class MistralAIService implements AIService {
         .split("...")
         .map((part) => part.split("/").pop() || "");
 
-      // Optimized API call with timeout
+      // Set timeout for 25 seconds max
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 10000); // 10s timeout
+      const timeout = setTimeout(() => controller.abort(), 25000);
 
       const response = await axios.post(
         this.apiUrl,
@@ -150,22 +228,33 @@ export class MistralAIService implements AIService {
           messages: [
             {
               role: "system",
-              content: `Respond ONLY with JSON: {"title":"PR title","description":"Markdown description"}`,
+              content: `You are a PR assistant. Respond with JSON in this format:
+              {
+                "title": "Conventional Commits-style title",
+                "description": "## Summary\\nBrief overview\\n\\n## Changes\\n- Main changes\\n- Key files affected\\n\\n## Impact\\nWhat's affected"
+              }
+              Keep description concise but meaningful (3-5 bullet points).`,
             },
             {
               role: "user",
-              content: `Create PR for ${headBranch}→${baseBranch}. Commits:\n${commits
-                .slice(0, 10)
-                .join("\n")}${
-                commits.length > 10
-                  ? "\n...and " + (commits.length - 10) + " more"
+              content: `Create PR for ${headBranch}→${baseBranch} with these commits:
+              ${commits.slice(0, 15).join("\n")}
+              ${
+                commits.length > 15
+                  ? `\n(+ ${commits.length - 15} more commits)`
                   : ""
-              }`,
+              }
+              
+              Focus on:
+              1. Main purpose of changes
+              2. Key technical modifications
+              3. Notable files affected
+              `,
             },
           ],
-          temperature: 0.3,
+          temperature: 0.4, // Slightly higher for better quality
           response_format: {type: "json_object"},
-          max_tokens: 600, // Reduced from 1200
+          max_tokens: 900, // Balanced length
         },
         {
           headers: {
@@ -178,25 +267,26 @@ export class MistralAIService implements AIService {
 
       clearTimeout(timeout);
 
-      // Fast path parsing
+      // Robust but efficient parsing
       try {
         const content = response.data.choices[0]?.message?.content;
-        if (typeof content === "string") {
-          const result = JSON.parse(content);
-          if (result.title && result.description) {
-            return {
-              title: result.title,
-              description: result.description.replace(/\\n/g, "\n"),
-            };
-          }
+        if (content) {
+          const parsed =
+            typeof content === "string" ? JSON.parse(content) : content;
+          return {
+            title: parsed.title || defaultResponse.title,
+            description: parsed.description
+              ? parsed.description.replace(/\\n/g, "\n")
+              : defaultResponse.description,
+          };
         }
       } catch (e) {
-        console.warn("Fast parse failed, using default");
+        console.warn("Parsing failed, using default:", e);
       }
 
       return defaultResponse;
-    } catch (error: any) {
-      console.error("API call failed:", error?.response?.data?.message);
+    } catch (error) {
+      console.error("API call failed:", error);
       return defaultResponse;
     }
   }
