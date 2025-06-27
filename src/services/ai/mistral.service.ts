@@ -254,7 +254,7 @@ export class MistralAIService implements AIService {
           ],
           temperature: 0.4, // Slightly higher for better quality
           response_format: {type: "json_object"},
-          max_tokens: 800, // Balanced length
+          max_tokens: 900, // Balanced length
         },
         {
           headers: {
